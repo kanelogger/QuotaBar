@@ -85,6 +85,23 @@ final class ProbeBehaviorTests: XCTestCase {
         }
     }
 
+    func testKimiNetworkTimeoutReturnsPromptly() async {
+        let probe = KimiUsageProbe(
+            credentials: StaticCredentials(values: [.kimi: "redacted"]),
+            network: HangingNetwork(),
+            requestTimeout: 0.1
+        )
+        let startedAt = Date()
+
+        do {
+            _ = try await probe.fetch()
+            XCTFail("Expected timeout")
+        } catch {
+            XCTAssertEqual(error as? QuotaError, .network("Kimi 请求超时"))
+            XCTAssertLessThan(Date().timeIntervalSince(startedAt), 1)
+        }
+    }
+
     func testKimiFetchAddsMonthlyFallbackToBillingMetrics() async throws {
         let response = HTTPURLResponse(
             url: URL(string: "https://www.kimi.com")!,
@@ -105,6 +122,7 @@ final class ProbeBehaviorTests: XCTestCase {
         XCTAssertEqual(snapshot.metrics.first(where: { $0.window == .monthly })?.availability, .unavailable)
         let request = await network.lastRequest
         XCTAssertEqual(request?.value(forHTTPHeaderField: "connect-protocol-version"), "1")
+        XCTAssertTrue(request?.value(forHTTPHeaderField: "User-Agent")?.contains("Chrome/") == true)
         XCTAssertEqual(request?.httpMethod, "POST")
     }
 
@@ -112,6 +130,15 @@ final class ProbeBehaviorTests: XCTestCase {
         let body = Data(#"{"usages":[{"scope":"FEATURE_CODING","detail":{"limit":"100","used":"20"},"limits":[{"window":{"duration":60,"timeUnit":"TIME_UNIT_MINUTE"},"detail":{"limit":"50","remaining":"40"}}]}]}"#.utf8)
 
         XCTAssertThrowsError(try KimiUsageProbe.parseUsage(body))
+    }
+
+    func testKimiWithoutCodingSubscriptionReturnsUnavailableMetrics() throws {
+        for body in [Data(#"{"usages":[]}"#.utf8), Data("{}".utf8)] {
+            let metrics = try KimiUsageProbe.parseUsage(body)
+
+            XCTAssertEqual(metrics.map(\.window), [.weekly, .fiveHour])
+            XCTAssertTrue(metrics.allSatisfy { $0.availability == .unavailable })
+        }
     }
 
     func testOpenCodeFetchesAnchoredMonthlyCost() async throws {
@@ -165,6 +192,23 @@ final class ProbeBehaviorTests: XCTestCase {
         XCTAssertEqual(result.source, "codex /status")
         XCTAssertEqual(result.metric.percentRemaining, 42)
         XCTAssertEqual(result.metric.message, "resets in 2d")
+    }
+
+    func testCodexRPCTransportTimeoutReturnsPromptly() async throws {
+        let transport = try ProcessRPCTransport(
+            executablePath: "/bin/sh",
+            arguments: ["-c", "read value"]
+        )
+        defer { transport.close() }
+        let startedAt = Date()
+
+        do {
+            _ = try await transport.receive(timeout: 0.1)
+            XCTFail("Expected timeout")
+        } catch {
+            XCTAssertEqual(error as? QuotaError, .executionFailed("Codex RPC 超时"))
+            XCTAssertLessThan(Date().timeIntervalSince(startedAt), 1)
+        }
     }
 
     func testDeepSeekPreservesBalancesButMarksUnavailableAccount() async throws {
@@ -249,6 +293,13 @@ private actor StubNetwork: NetworkClient {
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
         lastRequest = request
         return (data, response)
+    }
+}
+
+private struct HangingNetwork: NetworkClient {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        try await Task.sleep(for: .seconds(60))
+        throw QuotaError.unknown("unreachable")
     }
 }
 

@@ -39,4 +39,6 @@ OpenCode 与 Codex 依赖本机 CLI。DeepSeek API Key 和手动 Kimi `kimi-auth
 
 Kimi Code 的 5 小时和周额度使用 `BillingService/GetUsages`。会员共享月额度位于订阅页，当前没有经过真实账号验证的稳定机器接口，因此 v1 明确显示“暂不可查询”并提供订阅页入口。代码通过 `KimiMonthlyUsageProviding` 保留独立实现接缝；只有捕获并脱敏真实只读响应、补齐 fixture 契约测试后才应启用。
 
+未订阅 Kimi Code 的账号当前返回 HTTP 200 与空 JSON 对象；应用会将 5 小时、周和月额度标记为不可用，并提示订阅状态，不把它误报为接口格式变化。
+
 应用不记录 Token、Cookie、Authorization Header 或原始私密响应。

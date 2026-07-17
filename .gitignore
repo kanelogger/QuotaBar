@@ -50,6 +50,8 @@ inbox/download/
 
 # Swift / Xcode
 .build/
+.swiftpm/
 DerivedData/
+QuotaBar.xcodeproj/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/

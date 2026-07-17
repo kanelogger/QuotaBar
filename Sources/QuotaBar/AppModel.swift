@@ -1,10 +1,13 @@
 import AppKit
 import Combine
 import Foundation
+import OSLog
 import QuotaCore
 
 @MainActor
 final class AppModel: ObservableObject {
+    private static let logger = Logger(subsystem: "com.kanelogger.QuotaBar", category: "refresh")
+
     @Published private(set) var updates: [ProviderID: ProviderUpdate] = [:]
     @Published private(set) var summary: QuotaSummary?
     @Published private(set) var isRefreshing = false
@@ -146,6 +149,34 @@ final class AppModel: ObservableObject {
     private func apply(_ update: ProviderUpdate, for providerID: ProviderID) {
         updates[providerID] = update
         recalculateSummary()
+        if let error = update.error {
+            let code = Self.errorCode(error)
+            let stale = update.snapshot != nil
+            Self.logger.error(
+                "Provider \(providerID.rawValue, privacy: .public) failed with \(code, privacy: .public); stale=\(stale, privacy: .public)"
+            )
+        } else {
+            let metricCount = update.snapshot?.metrics.count ?? 0
+            Self.logger.info(
+                "Provider \(providerID.rawValue, privacy: .public) succeeded with \(metricCount, privacy: .public) metrics"
+            )
+        }
+    }
+
+    private static func errorCode(_ error: QuotaError) -> String {
+        switch error {
+        case .cliNotFound: "cliNotFound"
+        case .notLoggedIn: "notLoggedIn"
+        case .notConfigured: "notConfigured"
+        case .authenticationExpired: "authenticationExpired"
+        case .rateLimited: "rateLimited"
+        case .network: "network"
+        case .invalidResponse(let detail):
+            detail.hasPrefix("Kimi contract ") ? detail : "invalidResponse"
+        case .executionFailed: "executionFailed"
+        case .permissionDenied: "permissionDenied"
+        case .unknown: "unknown"
+        }
     }
 
     private func refreshConfiguredProviders() {

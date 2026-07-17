@@ -11,7 +11,10 @@ final class CoordinatorTests: XCTestCase {
             source: "test"
         )
         let good = StubProbe(providerID: .codex, outcomes: [.success(goodSnapshot), .failure(.network("offline"))])
-        let bad = StubProbe(providerID: .deepSeek, outcomes: [.failure(.notConfigured)])
+        let bad = StubProbe(
+            providerID: .deepSeek,
+            outcomes: [.failure(.notConfigured), .failure(.notConfigured)]
+        )
         let coordinator = QuotaCoordinator(probes: [good, bad])
 
         let first = await coordinator.refreshAll()
@@ -41,6 +44,27 @@ final class CoordinatorTests: XCTestCase {
         _ = await refresh.value
         let finalValues = await recorder.values
         XCTAssertEqual(finalValues, [.codex, .kimi])
+    }
+
+    func testHungProviderTimesOutWithoutBlockingOtherProviders() async {
+        let recorder = UpdateRecorder()
+        let fast = DelayedProbe(providerID: .codex, delay: .milliseconds(10))
+        let hung = DelayedProbe(providerID: .kimi, delay: .seconds(60))
+        let coordinator = QuotaCoordinator(
+            probes: [hung, fast],
+            probeTimeout: 0.1
+        )
+        let startedAt = Date()
+
+        let updates = await coordinator.refreshAll { providerID, _ in
+            await recorder.append(providerID)
+        }
+
+        XCTAssertLessThan(Date().timeIntervalSince(startedAt), 1)
+        XCTAssertNotNil(updates[.codex]?.snapshot)
+        XCTAssertEqual(updates[.kimi]?.error, .executionFailed("Kimi 查询超时"))
+        let recordedValues = await recorder.values
+        XCTAssertEqual(recordedValues, [.codex, .kimi])
     }
 }
 

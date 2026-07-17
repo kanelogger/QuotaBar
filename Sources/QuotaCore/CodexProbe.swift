@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 public protocol CodexRateLimitProviding: Sendable {
@@ -170,30 +171,21 @@ public struct CodexCLIClient: CodexRateLimitProviding {
     }
 
     private func response(id: Int, transport: ProcessRPCTransport) async throws -> Data {
-        try await withThrowingTaskGroup(of: Data.self) { group in
-            group.addTask {
-                while true {
-                    let data = try await transport.receive()
-                    if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let responseID = object["id"] as? Int,
-                       responseID == id {
-                        if let error = object["error"] as? [String: Any] {
-                            throw QuotaError.executionFailed(error["message"] as? String ?? "RPC error")
-                        }
-                        return data
-                    }
-                }
-            }
-            group.addTask {
-                try await Task.sleep(for: .seconds(timeout))
-                transport.close()
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            let remaining = deadline.timeIntervalSinceNow
+            guard remaining > 0 else {
                 throw QuotaError.executionFailed("Codex RPC 超时")
             }
-            guard let first = try await group.next() else {
-                throw QuotaError.executionFailed("Codex RPC 已关闭")
+            let data = try await transport.receive(timeout: remaining)
+            if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let responseID = object["id"] as? Int,
+               responseID == id {
+                if let error = object["error"] as? [String: Any] {
+                    throw QuotaError.executionFailed(error["message"] as? String ?? "RPC error")
+                }
+                return data
             }
-            group.cancelAll()
-            return first
         }
     }
 
@@ -213,7 +205,9 @@ final class ProcessRPCTransport: @unchecked Sendable {
     private let input: Pipe
     private let output: Pipe
     private let closeLock = NSLock()
+    private let readLock = NSLock()
     private var isClosed = false
+    private var readBuffer = Data()
 
     init(executablePath: String, arguments: [String]) throws {
         process = Process()
@@ -237,12 +231,56 @@ final class ProcessRPCTransport: @unchecked Sendable {
         input.fileHandleForWriting.write(data)
     }
 
-    func receive() async throws -> Data {
-        for try await line in output.fileHandleForReading.bytes.lines {
-            guard !line.isEmpty, let data = line.data(using: .utf8) else { continue }
-            return data
+    func receive(timeout: TimeInterval) async throws -> Data {
+        try await Task.detached {
+            try self.receiveSynchronously(timeout: timeout)
+        }.value
+    }
+
+    private func receiveSynchronously(timeout: TimeInterval) throws -> Data {
+        try readLock.withLock {
+            let deadline = Date().addingTimeInterval(timeout)
+            while true {
+                if let newline = readBuffer.firstIndex(of: 0x0A) {
+                    let line = Data(readBuffer[..<newline])
+                    readBuffer.removeSubrange(readBuffer.startIndex...newline)
+                    if !line.isEmpty { return line }
+                    continue
+                }
+
+                let remaining = deadline.timeIntervalSinceNow
+                guard remaining > 0 else {
+                    throw QuotaError.executionFailed("Codex RPC 超时")
+                }
+
+                let milliseconds = Int32(min(remaining * 1_000, Double(Int32.max)))
+                var descriptor = pollfd(
+                    fd: output.fileHandleForReading.fileDescriptor,
+                    events: Int16(POLLIN | POLLHUP),
+                    revents: 0
+                )
+                let ready = Darwin.poll(&descriptor, 1, milliseconds)
+                if ready == 0 {
+                    throw QuotaError.executionFailed("Codex RPC 超时")
+                }
+                if ready < 0 {
+                    if errno == EINTR { continue }
+                    throw QuotaError.executionFailed(String(cString: strerror(errno)))
+                }
+
+                var buffer = [UInt8](repeating: 0, count: 8_192)
+                let count = Darwin.read(descriptor.fd, &buffer, buffer.count)
+                if count > 0 {
+                    readBuffer.append(contentsOf: buffer.prefix(count))
+                    continue
+                }
+                if count == 0 {
+                    throw QuotaError.executionFailed("Codex 进程意外退出")
+                }
+                if errno == EINTR || errno == EAGAIN { continue }
+                throw QuotaError.executionFailed(String(cString: strerror(errno)))
+            }
         }
-        throw QuotaError.executionFailed("Codex 进程意外退出")
     }
 
     func close() {

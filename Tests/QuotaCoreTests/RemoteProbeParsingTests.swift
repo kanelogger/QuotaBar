@@ -15,6 +15,18 @@ final class RemoteProbeParsingTests: XCTestCase {
         XCTAssertEqual(monthly.availability, .unavailable)
     }
 
+    func testKimiContractShapeContainsOnlyFieldNamesAndTypes() {
+        let data = Data(#"{"usages":[{"scope":"SECRET_SCOPE","detail":{"limit":123,"used":45},"limits":[]}],"privateValue":"DO_NOT_LOG"}"#.utf8)
+
+        let shape = KimiUsageProbe.contractShape(data)
+
+        XCTAssertTrue(shape.contains("privateValue:string"))
+        XCTAssertTrue(shape.contains("limit:number"))
+        XCTAssertFalse(shape.contains("SECRET_SCOPE"))
+        XCTAssertFalse(shape.contains("DO_NOT_LOG"))
+        XCTAssertFalse(shape.contains("123"))
+    }
+
     func testDeepSeekParsesEveryCurrencyAndRejectsMalformedBalance() throws {
         let valid = try fixture("deepseek-balance")
         let balance = try DeepSeekProbe.parseBalance(valid)

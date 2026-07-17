@@ -19,6 +19,10 @@ targets:
     platform: macOS
     sources:
       - Sources/QuotaCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.kanelogger.QuotaCore
   QuotaBar:
     type: application
     platform: macOS
@@ -43,8 +47,8 @@ targets:
       - path: Tests/QuotaCoreTests
         excludes:
           - Fixtures
-    resources:
-      - Tests/QuotaCoreTests/Fixtures
+      - path: Tests/QuotaCoreTests/Fixtures
+        buildPhase: resources
     dependencies:
       - target: QuotaCore
   QuotaBarTests:
