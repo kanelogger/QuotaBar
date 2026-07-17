@@ -1,0 +1,12 @@
+{
+  "rateLimits": {
+    "primary": {
+      "usedPercent": 20,
+      "resetsAt": 1784300000
+    },
+    "secondary": {
+      "usedPercent": 65,
+      "resetsAt": 1784500000
+    }
+  }
+}

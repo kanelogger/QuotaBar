@@ -1,0 +1,27 @@
+{
+  "usages": [
+    {
+      "scope": "FEATURE_CODING",
+      "detail": {
+        "limit": "2048",
+        "used": "214",
+        "remaining": "1834",
+        "resetTime": "2026-07-20T00:00:00Z"
+      },
+      "limits": [
+        {
+          "window": {
+            "duration": 300,
+            "timeUnit": "TIME_UNIT_MINUTE"
+          },
+          "detail": {
+            "limit": "200",
+            "used": "50",
+            "remaining": "150",
+            "resetTime": "2026-07-17T15:00:00Z"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+name: QuotaBar
+options:
+  bundleIdPrefix: com.kanelogger
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_APP_SANDBOX: NO
+    CODE_SIGN_IDENTITY: "-"
+packages:
+  SweetCookieKit:
+    url: https://github.com/steipete/SweetCookieKit.git
+    from: 0.3.0
+targets:
+  QuotaCore:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/QuotaCore
+  QuotaBar:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/QuotaBar
+    resources:
+      - Sources/QuotaBar/Resources
+    info:
+      path: Sources/QuotaBar/Info.plist
+      properties:
+        CFBundleDisplayName: QuotaBar
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: Copyright © 2026 Kane. All rights reserved.
+    dependencies:
+      - target: QuotaCore
+      - package: SweetCookieKit
+  QuotaCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/QuotaCoreTests
+        excludes:
+          - Fixtures
+    resources:
+      - Tests/QuotaCoreTests/Fixtures
+    dependencies:
+      - target: QuotaCore
+  QuotaBarTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/QuotaBarTests
+    dependencies:
+      - target: QuotaBar
+      - target: QuotaCore
+schemes:
+  QuotaBar:
+    build:
+      targets:
+        QuotaBar: all
+        QuotaCore: all
+        QuotaCoreTests: [test]
+        QuotaBarTests: [test]
+    test:
+      targets:
+        - QuotaCoreTests
+        - QuotaBarTests
