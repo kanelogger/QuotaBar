@@ -3,6 +3,12 @@ import XCTest
 @testable import QuotaCore
 
 final class DomainTests: XCTestCase {
+    func testQuotaPercentRemainingClampsAtBounds() {
+        XCTAssertEqual(UsageMetric.quota(id: "test", name: "", window: .fiveHour, used: -1, total: 12).percentRemaining, 100)
+        XCTAssertEqual(UsageMetric.quota(id: "test", name: "", window: .fiveHour, used: 18, total: 12).percentRemaining, 0)
+        XCTAssertEqual(UsageMetric.quota(id: "test", name: "", window: .fiveHour, used: 6, total: 12).percentRemaining, 50)
+    }
+
     func testQuotaSummarySelectsSmallestRemainingMetric() throws {
         let openCode = ProviderSnapshot(
             providerID: .openCodeGo,

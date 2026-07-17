@@ -44,7 +44,7 @@ final class AppModel: ObservableObject {
         } else {
             let kimiCredentials = KimiCredentialProvider(keychain: credentials)
             self.coordinator = QuotaCoordinator(probes: [
-                OpenCodeProbe(),
+                OpenCodeGoConsoleProbe(),
                 KimiUsageProbe(credentials: kimiCredentials),
                 CodexProbe(),
                 DeepSeekProbe(credentials: credentials),
@@ -126,6 +126,11 @@ final class AppModel: ObservableObject {
 
     func openKimiSubscription() {
         guard let url = URL(string: "https://www.kimi.com/code/console") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    func openOpenCodeGoConsole() {
+        guard let url = URL(string: "https://opencode.ai/auth") else { return }
         NSWorkspace.shared.open(url)
     }
 

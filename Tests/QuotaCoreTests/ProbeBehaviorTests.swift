@@ -3,6 +3,15 @@ import XCTest
 @testable import QuotaCore
 
 final class ProbeBehaviorTests: XCTestCase {
+    func testOpenCodeGoConsoleProbeMarksUsageUnavailable() async throws {
+        let snapshot = try await OpenCodeGoConsoleProbe().fetch()
+
+        XCTAssertEqual(snapshot.providerID, .openCodeGo)
+        XCTAssertEqual(snapshot.status, .ready)
+        XCTAssertEqual(snapshot.metrics.map(\.window), [.monthly])
+        XCTAssertTrue(snapshot.metrics.allSatisfy { $0.availability == .unavailable })
+    }
+
     func testSystemCommandRunnerTimeoutReturnsPromptly() async {
         let startedAt = Date()
         do {
@@ -16,53 +25,6 @@ final class ProbeBehaviorTests: XCTestCase {
         } catch {
             XCTAssertTrue(Date().timeIntervalSince(startedAt) < 1.5)
         }
-    }
-
-    func testOpenCodeMissingCLIHasSpecificError() async {
-        let probe = OpenCodeProbe(runner: StubCommandRunner(executable: nil, results: []))
-
-        do {
-            _ = try await probe.fetch()
-            XCTFail("Expected cliNotFound")
-        } catch {
-            XCTAssertEqual(error as? QuotaError, .cliNotFound("opencode"))
-        }
-    }
-
-    func testOpenCodeEmptyDatabaseProducesZeroUsageWithoutInventingMonthlyReset() async throws {
-        let runner = StubCommandRunner(
-            executable: "/usr/local/bin/opencode",
-            results: [CommandResult(
-                output: #"[{"five_hour_cost":0,"weekly_cost":0,"five_hour_oldest_ms":null,"anchor_ms":null}]"#,
-                exitCode: 0
-            )]
-        )
-        let now = Date(timeIntervalSince1970: 1_784_278_400)
-        let snapshot = try await OpenCodeProbe(runner: runner, now: { now }).fetch()
-
-        XCTAssertEqual(snapshot.metrics.count, 3)
-        XCTAssertEqual(snapshot.metrics.first(where: { $0.window == .monthly })?.used, 0)
-        XCTAssertNil(snapshot.metrics.first(where: { $0.window == .monthly })?.resetsAt)
-        XCTAssertEqual(runner.runCount, 1)
-    }
-
-    func testOpenCodeFiveHourResetUsesOldestIncludedMessage() async throws {
-        let now = Date(timeIntervalSince1970: 1_784_278_400)
-        let oldest = Int64(now.addingTimeInterval(-3_600).timeIntervalSince1970 * 1_000)
-        let runner = StubCommandRunner(
-            executable: "/usr/local/bin/opencode",
-            results: [CommandResult(
-                output: #"[{"five_hour_cost":1,"weekly_cost":1,"five_hour_oldest_ms":\#(oldest),"anchor_ms":null}]"#,
-                exitCode: 0
-            )]
-        )
-
-        let snapshot = try await OpenCodeProbe(runner: runner, now: { now }).fetch()
-
-        XCTAssertEqual(
-            snapshot.metrics.first(where: { $0.window == .fiveHour })?.resetsAt,
-            now.addingTimeInterval(4 * 3_600)
-        )
     }
 
     func testKimiMapsAuthenticationFailure() async {
@@ -138,41 +100,6 @@ final class ProbeBehaviorTests: XCTestCase {
 
             XCTAssertEqual(metrics.map(\.window), [.weekly, .fiveHour])
             XCTAssertTrue(metrics.allSatisfy { $0.availability == .unavailable })
-        }
-    }
-
-    func testOpenCodeFetchesAnchoredMonthlyCost() async throws {
-        let now = Date(timeIntervalSince1970: 1_784_278_400)
-        let anchor = Int64(now.addingTimeInterval(-40 * 86_400).timeIntervalSince1970 * 1_000)
-        let runner = StubCommandRunner(
-            executable: "/usr/local/bin/opencode",
-            results: [
-                CommandResult(
-                    output: #"[{"five_hour_cost":2,"weekly_cost":7,"five_hour_oldest_ms":null,"anchor_ms":\#(anchor)}]"#,
-                    exitCode: 0
-                ),
-                CommandResult(output: #"[{"monthly_cost":11.5}]"#, exitCode: 0),
-            ]
-        )
-
-        let snapshot = try await OpenCodeProbe(runner: runner, now: { now }).fetch()
-
-        XCTAssertEqual(snapshot.metrics.first(where: { $0.window == .monthly })?.used, 11.5)
-        XCTAssertNotNil(snapshot.metrics.first(where: { $0.window == .monthly })?.resetsAt)
-        XCTAssertEqual(runner.runCount, 2)
-    }
-
-    func testOpenCodeMapsNonzeroDatabaseExit() async {
-        let runner = StubCommandRunner(
-            executable: "/usr/local/bin/opencode",
-            results: [CommandResult(output: "database unavailable", exitCode: 2)]
-        )
-
-        do {
-            _ = try await OpenCodeProbe(runner: runner).fetch()
-            XCTFail("Expected executionFailed")
-        } catch {
-            XCTAssertEqual(error as? QuotaError, .executionFailed("opencode db 退出码 2"))
         }
     }
 

@@ -2,7 +2,7 @@
 
 macOS 14+ 原生菜单栏额度查询工具，集中展示：
 
-- OpenCode Go：5 小时、UTC 周额度、按首次 Go 消息锚定的月额度。
+- OpenCode Go：不需要本机 CLI；在官方控制台查看订阅用量。
 - Kimi Code：5 小时、周额度；月额度当前显示订阅页入口。
 - Codex：周剩余额度。
 - DeepSeek：CNY/USD 余额和账户可用状态。
@@ -33,7 +33,7 @@ xcodebuild -project QuotaBar.xcodeproj -scheme QuotaBar -destination 'platform=m
 swift test
 ```
 
-OpenCode 与 Codex 依赖本机 CLI。DeepSeek API Key 和手动 Kimi `kimi-auth` 保存在系统 Keychain。Kimi 在 Keychain 没有手动 Token 时会尝试从已登录浏览器读取 Cookie；该能力需要用户给 QuotaBar 完全磁盘访问权限。
+Codex 依赖本机 CLI。OpenCode Go 用量通过官方控制台入口查看。DeepSeek API Key 和手动 Kimi `kimi-auth` 保存在系统 Keychain。Kimi 在 Keychain 没有手动 Token 时会尝试从已登录浏览器读取 Cookie；该能力需要用户给 QuotaBar 完全磁盘访问权限。
 
 ## Kimi 月额度边界
 

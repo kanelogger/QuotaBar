@@ -6,6 +6,7 @@
 "action.save" = "Save";
 "action.remove" = "Remove";
 "action.openSubscription" = "Open Kimi subscription";
+"action.openOpenCodeGoConsole" = "Open OpenCode Go console";
 "state.loading" = "Refreshing…";
 "state.waiting" = "Waiting for first refresh";
 "state.stale" = "STALE";
@@ -14,6 +15,7 @@
 "state.configured" = "Configured";
 "state.notConfigured" = "Not configured";
 "state.accountUnavailable" = "Account currently unavailable for API calls";
+"state.openCodeGoConsoleHint" = "View OpenCode Go usage in the official console.";
 "metric.remaining" = "left";
 "metric.fiveHour" = "5 hours";
 "metric.weekly" = "Weekly";

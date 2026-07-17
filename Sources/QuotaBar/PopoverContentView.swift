@@ -20,7 +20,8 @@ struct PopoverContentView: View {
                         update: model.updates[providerID],
                         isRefreshing: model.isRefreshing,
                         thresholds: model.settings.thresholds,
-                        unavailableAction: unavailableAction(for: providerID)
+                        unavailableAction: unavailableAction(for: providerID),
+                        unavailableActionTitle: unavailableActionTitle(for: providerID)
                     )
                 }
             }
@@ -31,8 +32,22 @@ struct PopoverContentView: View {
     }
 
     private func unavailableAction(for providerID: ProviderID) -> (() -> Void)? {
-        guard providerID == .kimi else { return nil }
-        return { model.openKimiSubscription() }
+        switch providerID {
+        case .openCodeGo:
+            return { model.openOpenCodeGoConsole() }
+        case .kimi:
+            return { model.openKimiSubscription() }
+        case .codex, .deepSeek:
+            return nil
+        }
+    }
+
+    private func unavailableActionTitle(for providerID: ProviderID) -> String? {
+        switch providerID {
+        case .openCodeGo: L10n.openOpenCodeGoConsole
+        case .kimi: L10n.openSubscription
+        case .codex, .deepSeek: nil
+        }
     }
 
     private var header: some View {
@@ -99,6 +114,7 @@ private struct ProviderCardView: View {
     let isRefreshing: Bool
     let thresholds: BalanceThresholds
     let unavailableAction: (() -> Void)?
+    let unavailableActionTitle: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -123,11 +139,17 @@ private struct ProviderCardView: View {
                         .font(.caption2)
                         .foregroundStyle(.orange)
                 }
+                if providerID == .openCodeGo {
+                    Text(L10n.openCodeGoConsoleHint)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
                 ForEach(snapshot.metrics) { metric in
                     MetricRow(
                         metric: metric,
                         thresholds: thresholds,
-                        unavailableAction: unavailableAction
+                        unavailableAction: unavailableAction,
+                        unavailableActionTitle: unavailableActionTitle
                     )
                 }
                 Text(timestamp(snapshot.capturedAt))
@@ -195,6 +217,7 @@ private struct MetricRow: View {
     let metric: UsageMetric
     let thresholds: BalanceThresholds
     let unavailableAction: (() -> Void)?
+    let unavailableActionTitle: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -226,8 +249,9 @@ private struct MetricRow: View {
                     .foregroundStyle(.tertiary)
             } else if metric.availability == .unavailable,
                       metric.window == .monthly,
-                      let unavailableAction {
-                Button(L10n.openSubscription, action: unavailableAction)
+                      let unavailableAction,
+                      let unavailableActionTitle {
+                Button(unavailableActionTitle, action: unavailableAction)
                     .font(.caption2)
                     .buttonStyle(.link)
             }

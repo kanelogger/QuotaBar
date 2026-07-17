@@ -30,6 +30,7 @@ enum L10n {
     static var balanceWarning: String { text("settings.balanceWarning") }
     static var refreshInterval: String { text("settings.refreshInterval") }
     static var openSubscription: String { text("action.openSubscription") }
+    static var openOpenCodeGoConsole: String { text("action.openOpenCodeGoConsole") }
     static var saved: String { text("message.saved") }
     static var cookieImported: String { text("message.cookieImported") }
     static var oneMinute: String { text("interval.1m") }
@@ -37,6 +38,7 @@ enum L10n {
     static var fifteenMinutes: String { text("interval.15m") }
     static var thirtyMinutes: String { text("interval.30m") }
     static var accountUnavailable: String { text("state.accountUnavailable") }
+    static var openCodeGoConsoleHint: String { text("state.openCodeGoConsoleHint") }
 
     static func errorDescription(_ error: Error) -> String {
         guard let error = error as? QuotaError else { return error.localizedDescription }
