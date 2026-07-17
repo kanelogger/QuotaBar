@@ -17,11 +17,6 @@ struct SettingsView: View {
             HStack {
                 Text(L10n.settings)
                     .font(.title2.weight(.semibold))
-                Spacer()
-                if model.settingsPresented {
-                    Button(L10n.done) { model.settingsPresented = false }
-                        .keyboardShortcut(.defaultAction)
-                }
             }
 
             GroupBox(L10n.credentials) {

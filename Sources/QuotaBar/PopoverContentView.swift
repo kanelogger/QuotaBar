@@ -28,10 +28,6 @@ struct PopoverContentView: View {
         }
         .padding(16)
         .frame(width: 520)
-        .sheet(isPresented: $model.settingsPresented) {
-            SettingsView(model: model)
-                .frame(width: 460)
-        }
     }
 
     private func unavailableAction(for providerID: ProviderID) -> (() -> Void)? {
@@ -67,9 +63,7 @@ struct PopoverContentView: View {
             .help(L10n.refresh)
             .accessibilityLabel(L10n.refresh)
 
-            Button {
-                model.settingsPresented = true
-            } label: {
+            SettingsLink {
                 Image(systemName: "gearshape")
             }
             .buttonStyle(.borderless)
