@@ -7,8 +7,15 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
     ENABLE_APP_SANDBOX: NO
     CODE_SIGN_IDENTITY: "-"
+  configs:
+    Release:
+      CODE_SIGN_STYLE: Manual
+      CODE_SIGN_IDENTITY: Developer ID Application
+      ENABLE_HARDENED_RUNTIME: YES
 packages:
   SweetCookieKit:
     url: https://github.com/steipete/SweetCookieKit.git

@@ -53,5 +53,16 @@ inbox/download/
 .swiftpm/
 DerivedData/
 QuotaBar.xcodeproj/
+# Keep Xcode's SwiftPM resolution file under version control while ignoring
+# generated project files.
+!QuotaBar.xcodeproj/
+QuotaBar.xcodeproj/*
+!QuotaBar.xcodeproj/project.xcworkspace/
+QuotaBar.xcodeproj/project.xcworkspace/*
+!QuotaBar.xcodeproj/project.xcworkspace/xcshareddata/
+QuotaBar.xcodeproj/project.xcworkspace/xcshareddata/*
+!QuotaBar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+QuotaBar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!QuotaBar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
