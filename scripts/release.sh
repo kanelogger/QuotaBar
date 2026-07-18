@@ -51,6 +51,14 @@ cd "$ROOT_DIR"
   echo "HEAD must be tagged $TAG before building a release." >&2
   exit 1
 }
+git rev-parse --verify --quiet origin/main >/dev/null || {
+  echo "Cannot verify the release tag against origin/main. Fetch origin/main first." >&2
+  exit 1
+}
+git merge-base --is-ancestor HEAD origin/main || {
+  echo "Release tag $TAG must point to a commit merged into origin/main." >&2
+  exit 1
+}
 git ls-files --error-unmatch "$RESOLVED_FILE" >/dev/null 2>&1 || {
   echo "SwiftPM lockfile must be tracked before releasing: $RESOLVED_FILE" >&2
   exit 1
@@ -91,6 +99,13 @@ save_notary_log() {
   fi
 }
 
+xml_escape() {
+  sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g' -e "s/'/\&apos;/g" <<< "$1"
+}
+
+DEVELOPER_IDENTITY_XML="$(xml_escape "$DEVELOPER_IDENTITY")"
+DEVELOPMENT_TEAM_XML="$(xml_escape "$DEVELOPMENT_TEAM")"
+
 cat > "$EXPORT_OPTIONS" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -99,11 +114,11 @@ cat > "$EXPORT_OPTIONS" <<EOF
   <key>method</key>
   <string>developer-id</string>
   <key>signingCertificate</key>
-  <string>$DEVELOPER_IDENTITY</string>
+  <string>$DEVELOPER_IDENTITY_XML</string>
   <key>signingStyle</key>
   <string>manual</string>
   <key>teamID</key>
-  <string>$DEVELOPMENT_TEAM</string>
+  <string>$DEVELOPMENT_TEAM_XML</string>
 </dict>
 </plist>
 EOF
@@ -151,7 +166,7 @@ codesign -d --verbose=4 "$APP_PATH" 2>&1 | grep -q 'Runtime Version=' || {
 }
 
 ditto -c -k --keepParent "$APP_PATH" "$NOTARY_ZIP"
-if ! xcrun notarytool submit "$NOTARY_ZIP" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json > "$NOTARY_RESULT"; then
+if ! xcrun notarytool submit "$NOTARY_ZIP" --keychain-profile "$NOTARY_PROFILE" --wait --timeout 30m --output-format json > "$NOTARY_RESULT"; then
   save_notary_log
   echo "Notarization failed. Results: $NOTARY_RESULT" >&2
   exit 1
