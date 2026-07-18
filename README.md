@@ -33,6 +33,20 @@ xcodebuild -project QuotaBar.xcodeproj -scheme QuotaBar -destination 'platform=m
 swift test
 ```
 
+## 安装与 Release
+
+正式版本从 [GitHub Releases](https://github.com/kanelogger/QuotaBar/releases) 下载，要求 macOS 14+。
+
+- `QuotaBar-<version>.dmg`：打开后将 QuotaBar 拖入 Applications。
+- `QuotaBar-<version>-macos.zip`：解压后将 QuotaBar 移入 Applications，适合脚本安装和后续 Homebrew Cask。
+- `SHA256SUMS.txt`：使用 `shasum -a 256 -c SHA256SUMS.txt` 校验 DMG 与 ZIP 的完整性。
+
+Release 应用使用 Developer ID 签名并经 Apple 公证。首次发布前需要有效 Apple Developer Program 会员、已安装的 `Developer ID Application` 证书，以及 `notarytool` Keychain profile。发布脚本读取本机环境变量 `DEVELOPMENT_TEAM`、`DEVELOPER_IDENTITY` 和 `NOTARY_PROFILE`，不保存任何凭据到仓库。
+
+发布者从 `main` 的 `v<version>` tag 运行 `scripts/release.sh` 生成并公证产物，再运行 `scripts/verify-release.sh dist/v<version>` 验证。`scripts/publish-github-release.sh` 创建草稿 Release；确认说明和资产后，以 `--publish` 发布为 latest。
+
+在干净的 macOS 用户环境中，分别从 DMG 和 ZIP 安装并启动一次 QuotaBar；确认菜单栏出现、设置可编辑，且 Codex、OpenCode Go 与 Kimi 入口均可用后，才发布 GitHub Release。
+
 Codex 依赖本机 CLI。OpenCode Go 用量通过官方控制台入口查看。DeepSeek API Key 和手动 Kimi `kimi-auth` 保存在系统 Keychain。Kimi 在 Keychain 没有手动 Token 时会尝试从已登录浏览器读取 Cookie；该能力需要用户给 QuotaBar 完全磁盘访问权限。
 
 ## Kimi 月额度边界
